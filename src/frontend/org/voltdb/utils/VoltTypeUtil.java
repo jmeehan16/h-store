@@ -455,4 +455,23 @@ public abstract class VoltTypeUtil {
         } // SWITCH
         return (ret);
     }
+
+    //lyzhang
+    public static java.sql.Timestamp getSqlTimestampFromMicrosSinceEpoch(long timestamp) {
+        java.sql.Timestamp result;
+
+        // The lower 6 digits of the microsecond timestamp (including the "double-counted" millisecond digits)
+        // must be scaled up to get the 9-digit (rounded) nanosecond value.
+        if (timestamp >= 0) {
+            result = new java.sql.Timestamp(timestamp/1000);
+            result.setNanos(((int) (timestamp % 1000000))*1000);
+        } else {
+            result = new java.sql.Timestamp((timestamp/1000000 - 1) * 1000);
+
+            int remaining = (int) (timestamp % 1000000);
+            result.setNanos((remaining+1000000) * 1000 );
+        }
+
+        return result;
+    }
 }

@@ -18,12 +18,14 @@
 package org.voltdb.compiler;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -1211,5 +1213,15 @@ public class VoltProjectBuilder {
      */
     public static File writeStringToTempFile(final String content) {
         return FileUtil.writeStringToTempFile(content, "project", true);
+    }
+
+    //JOHN: Added with JDBC code
+    public void addLiteralSchema(String ddlText) throws IOException {
+        File temp = File.createTempFile("literalschema", "sql");
+        temp.deleteOnExit();
+        FileWriter out = new FileWriter(temp);
+        out.write(ddlText);
+        out.close();
+        addSchema(URLEncoder.encode(temp.getAbsolutePath(), "UTF-8"));
     }
 }

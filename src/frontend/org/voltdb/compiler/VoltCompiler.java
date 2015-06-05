@@ -91,6 +91,7 @@ import org.voltdb.sysprocs.ExecutorStatus;
 import org.voltdb.sysprocs.GarbageCollection;
 import org.voltdb.sysprocs.GetCatalog;
 import org.voltdb.sysprocs.GetConfiguration;
+import org.voltdb.sysprocs.GetSystemInfo;
 import org.voltdb.sysprocs.LoadMultipartitionTable;
 import org.voltdb.sysprocs.NoOp;
 import org.voltdb.sysprocs.MarkovUpdate;
@@ -1303,6 +1304,7 @@ public class VoltCompiler {
             {SnapshotDelete.class,                  false,      true},
             {Quiesce.class,                         true,       true},
             {Statistics.class,                      true,       false},
+            {GetSystemInfo.class,                   true,       false},
             
             // Anti-Cache Operations
             {EvictTuples.class,                     false,      false},

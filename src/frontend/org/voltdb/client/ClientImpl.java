@@ -46,7 +46,7 @@ import edu.brown.utils.PartitionEstimator;
  *  and provides methods to call stored procedures and receive
  *  responses.
  */
-final class ClientImpl implements Client {
+public final class ClientImpl implements Client {
     private static final Logger LOG = Logger.getLogger(ClientImpl.class);
     private static final LoggerBoolean debug = new LoggerBoolean();
     private static final LoggerBoolean trace = new LoggerBoolean();

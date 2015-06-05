@@ -24,6 +24,9 @@ import java.nio.ByteBuffer;
 import org.voltdb.types.TimestampType;
 import org.voltdb.types.VoltDecimalHelper;
 
+//lyzhang
+import org.voltdb.utils.VoltTypeUtil;
+
 /**
  * <h3>Summary</h3>
  *
@@ -71,6 +74,7 @@ public abstract class VoltTableRow {
     static final int ROW_COUNT_SIZE = Integer.SIZE/8;
     static final int STRING_LEN_SIZE = Integer.SIZE/8;
     static final int INVALID_ROW_INDEX = -1;
+    static final int VARBINARY_LEN_SIZE = 4;   //lyzhang
 
     /** Stores the row data (and possibly much more) */
     protected ByteBuffer m_buffer;
@@ -572,6 +576,93 @@ public abstract class VoltTableRow {
     public TimestampType getTimestampAsTimestamp(String columnName) {
         final int colIndex = getColumnIndex(columnName);
         return getTimestampAsTimestamp(colIndex);
+    }
+
+    //lyzhang
+    /**
+     * Retrieve the <tt>java.sql.Timestamp</tt> equivalent to the value stored in the column specified by index.
+     * Note that VoltDB uses GMT universally within its process space. Date objects sent over
+     * the wire from clients may seem to be different times because of this, but it is just
+     * a time zone offset. VoltDB Timestamps are stored as long integer microseconds from epoch.
+     * The resulting value is accurate to no finer than microsecond granularity.
+     * @param columnIndex Index of the column
+     * @return the <tt>java.sql.Timestamp</tt> equivalent to the value stored in the specified column
+     */
+    public final java.sql.Timestamp getTimestampAsSqlTimestamp(int columnIndex) {
+        final long timestamp = getTimestampAsLong(columnIndex);
+        if (m_wasNull) return null;
+
+        return VoltTypeUtil.getSqlTimestampFromMicrosSinceEpoch(timestamp);
+    }
+
+    /**
+     * Retrieve the <tt>java.sql.Timestamp</tt> equivalent to the value stored in the column specified by name.
+     * Note that VoltDB uses GMT universally within its process space. Date objects sent over
+     * the wire from clients may seem to be different times because of this, but it is just
+     * a time zone offset. VoltDB Timestamps are stored as long integer microseconds from epoch.
+     * The resulting value is accurate to no finer than microsecond granularity.
+     * Avoid retrieving via this method as it is slower than specifying the
+     * column by index. Use {@link #getTimestampAsSqlTimestamp(int)} instead.
+     * @param columnName name of the column
+     * @return the <tt>java.sql.Timestamp</tt> equivalent to the value stored in the specified column
+     */
+    public java.sql.Timestamp getTimestampAsSqlTimestamp(String columnName) {
+        final int colIndex = getColumnIndex(columnName);
+        return getTimestampAsSqlTimestamp(colIndex);
+    }
+
+    /**
+     * Retrieve the varbinary value stored in the column specified by index.
+     * Looking at the return value is not a reliable way to check if the value
+     * is <tt>null</tt>. Use {@link #wasNull()} instead.
+     * @param columnIndex Index of the column
+     * @return Varbinary value stored in the specified column
+     * @see #wasNull()
+     */
+    public final byte[] getVarbinary(int columnIndex) {
+        //validateColumnType(columnIndex, VoltType.VARBINARY);  lyzhang
+        int pos = m_buffer.position();
+        m_buffer.position(getOffset(columnIndex));
+        // Sanity check the varbinary size int position.
+        if (VARBINARY_LEN_SIZE > m_buffer.remaining()) {
+            throw new RuntimeException(String.format(
+                    "VoltTableRow::getVarbinary: Can't read varbinary size as %d byte integer " +
+                    "from buffer with %d bytes remaining.",
+                    VARBINARY_LEN_SIZE, m_buffer.remaining()));
+        }
+        int len = m_buffer.getInt();
+        if (len == VoltTable.NULL_STRING_INDICATOR) {
+            m_wasNull = true;
+            m_buffer.position(pos);
+            return null;
+        }
+        // Sanity check the size against the remaining buffer size.
+        if (len > m_buffer.remaining()) {
+            throw new RuntimeException(String.format(
+                    "VoltTableRow::getVarbinary: Can't read %d byte varbinary " +
+                    "from buffer with %d bytes remaining.", len, m_buffer.remaining()));
+        }
+        m_wasNull = false;
+        byte[] data = new byte[len];
+        m_buffer.get(data);
+        m_buffer.position(pos);
+        return data;
+    }
+
+    /**
+     * Retrieve the varbinary value stored in the column
+     * specified by name. Avoid retrieving via this method as it is slower than specifying the
+     * column by index. Use {@link #getVarbinary(int)} instead.
+     * Looking at the return value is not a reliable way to check if the value
+     * is <tt>null</tt>. Use {@link #wasNull()} instead.
+     * @param columnName Name of the column
+     * @return Varbinary value stored in the specified column
+     * @see #wasNull()
+     * @see #getVarbinary(int)
+     */
+    public final byte[] getVarbinary(String columnName) {
+        final int colIndex = getColumnIndex(columnName);
+        return getVarbinary(colIndex);
     }
 
     /**

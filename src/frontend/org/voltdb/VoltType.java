@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.voltdb.types.TimestampType;
+import org.voltdb.types.VoltDecimalHelper;
 
 /**
  * Represents a type in a VoltDB Stored Procedure or {@link VoltTable VoltTable}.
@@ -138,13 +139,185 @@ public enum VoltType {
     private final String m_sqlString;
     private final Class<?>[] m_classes;
 
+    //additions for JDBC
+    private final Class<?> m_vectorClass;
+    private final char m_signatureChar;
+    // Is this type visible to JDBC?
+    private final boolean m_jdbcVisible;
+    // JDBC getTypeInfo values
+    // If we add yet more stuff to this for MySQL or ODBC or something,
+    // it might be time to consider some sort of data-driven type specification
+    // mechanism.
+    private final int m_dataType;
+    private final String m_literalPrefix;
+    private final String m_literalSuffix;
+    private final String m_createParams;    
+    private final int m_nullable;
+    private final boolean m_caseSensitive;
+    private final int m_searchable;
+    private final Boolean m_unsignedAttribute;    
+    private final Integer m_minimumScale;
+    private final Integer m_maximumScale;
+    // I wanted to use the first entry in m_classes, but it doesn't match what
+    // VoltTable.get() returns in some cases, and I'm fearful of arbitrarily changing
+    // what classFromType() returns to various parts of the system
+    // This is the type that will be returned by ResultSet.getObject(), which
+    // boils down to VoltTable.get(), with a special case for timestamps
+    private final String m_jdbcClass;
+    //end JDBC additions
+
     private VoltType(byte val, int lengthInBytes,
             String sqlString, Class<?>[] classes) {
         m_val = val;
         m_lengthInBytes = lengthInBytes;
         m_sqlString = sqlString;
         m_classes = classes;
+
+	//additions for JDBC
+        m_vectorClass = null;
+        m_signatureChar = ' ';
+        m_jdbcVisible = false;
+        m_dataType = 0;
+        m_literalPrefix = null;
+        m_literalSuffix = null;
+        m_createParams = null;
+        m_nullable = 0;
+        m_searchable = 0;
+        m_caseSensitive = false;
+        m_unsignedAttribute = null;
+        m_minimumScale = null;
+        m_maximumScale = null;
+        m_jdbcClass = null;
     }
+
+    //additions for JDBC
+    public String getJdbcClass() {
+        return m_jdbcClass;
+    }
+    
+    /**
+     * Get the java.sql.Types type of this type.
+     *
+     * @return int representing SQL type of the VoltDB type.
+     */
+    public int getJdbcSqlType() {
+        return m_dataType;
+    }
+    public Integer getMinimumScale() {
+        return m_minimumScale;
+    }
+
+    public Integer getMaximumScale() {
+        return m_maximumScale;
+    }
+    public boolean isCaseSensitive() {
+        return m_caseSensitive;
+    }
+    public Boolean isUnsigned() {
+        return m_unsignedAttribute;
+    }
+    // Integer[0] is the column size and Integer[1] is the radix
+    // I'd love to get this magic into the type construction, but
+    // not happening this go-round.  --izzy
+    public Integer[] getTypePrecisionAndRadix()
+    {
+        Integer[] col_size_radix = {null, null};
+        switch(this)
+        {
+        case TINYINT:
+        case SMALLINT:
+        case INTEGER:
+        case BIGINT:
+        case TIMESTAMP:
+            col_size_radix[0] = (getLengthInBytesForFixedTypes() * 8) - 1;
+            col_size_radix[1] = 2;
+            break;
+        case FLOAT:
+            col_size_radix[0] = 53;  // magic for double
+            col_size_radix[1] = 2;
+            break;
+        case STRING:
+            col_size_radix[0] = VoltType.MAX_VALUE_LENGTH;
+            col_size_radix[1] = null;
+            break;
+        case DECIMAL:
+            col_size_radix[0] = VoltDecimalHelper.kDefaultPrecision;
+            col_size_radix[1] = 10;
+            break;
+//        case VARBINARY:
+//            col_size_radix[0] = VoltType.MAX_VALUE_LENGTH;
+//            col_size_radix[1] = null;
+//            break;
+        default:
+            // What's the right behavior here?
+        }
+        return col_size_radix;
+    }
+    // Constructor for JDBC-visible types.  Only types constructed in this way will
+    // appear in the JDBC getTypeInfo() metadata.
+    private VoltType(byte val, int lengthInBytes, String sqlString,
+                     Class<?>[] classes, Class<?> vectorClass, char signatureChar,
+                     int dataType,
+                     String literalPrefix,
+                     String literalSuffix,
+                     String createParams,
+                     boolean caseSensitive,
+                     int searchable,
+                     Boolean unsignedAttribute,
+                     Integer minimumScale,
+                     Integer maximumScale,
+                     String jdbcClass)
+    {
+        this(val, lengthInBytes, sqlString, classes, vectorClass, signatureChar,
+                true,
+                dataType,
+                literalPrefix,
+                literalSuffix,
+                createParams,
+                java.sql.DatabaseMetaData.typeNullable,
+                caseSensitive,
+                searchable,
+                unsignedAttribute,
+                minimumScale,
+                maximumScale,
+                jdbcClass);
+    }
+
+    private VoltType(byte val, int lengthInBytes, String sqlString,
+                     Class<?>[] classes, Class<?> vectorClass, char signatureChar,
+                     boolean jdbcVisible,
+                     int dataType,
+                     String literalPrefix,
+                     String literalSuffix,
+                     String createParams,
+                     int nullable,
+                     boolean caseSensitive,
+                     int searchable,
+                     Boolean unsignedAttribute,
+                     Integer minimumScale,
+                     Integer maximumScale,
+                     String jdbcClass)
+    {
+        m_val = val;
+        m_lengthInBytes = lengthInBytes;
+        m_sqlString = sqlString;
+        m_classes = classes;
+        m_vectorClass = vectorClass;
+        m_signatureChar = signatureChar;
+        m_jdbcVisible = jdbcVisible;
+        m_dataType = dataType;
+        m_literalPrefix = literalPrefix;
+        m_literalSuffix = literalSuffix;
+        m_createParams = createParams;
+        m_nullable = nullable;
+        m_caseSensitive = caseSensitive;
+        m_searchable = searchable;
+        m_unsignedAttribute = unsignedAttribute;
+        m_minimumScale = minimumScale;
+        m_maximumScale = maximumScale;
+        m_jdbcClass = jdbcClass;
+    }
+    //end JDBC additions
 
     private static Map<Class<?>, VoltType> s_classes;
     static {
@@ -466,4 +639,8 @@ public enum VoltType {
 
     private static final class NullDecimalSigil{}
     public static final NullDecimalSigil NULL_DECIMAL = new NullDecimalSigil();
+
+    private static final class NullStringOrVarbinarySigil{}
+    /** Null value for <code>STRING</code> or <code>VARBINARY</code>.  */
+    public static final NullStringOrVarbinarySigil NULL_STRING_OR_VARBINARY = new NullStringOrVarbinarySigil();
 }

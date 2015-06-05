@@ -25,7 +25,9 @@ package org.voltdb;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.UnknownHostException;
+import java.util.Calendar;
 
 import junit.framework.TestCase;
 
@@ -34,168 +36,382 @@ import org.voltdb.client.Client;
 import org.voltdb.client.ClientFactory;
 import org.voltdb.client.ProcCallException;
 import org.voltdb.utils.BuildDirectoryUtils;
+import org.voltdb.catalog.Statement;
+import org.voltdb.exceptions.ConstraintFailureException;
+import org.voltdb.types.TimestampType;
 
+import com.google.gdata.data.dublincore.Date;
+import com.sun.corba.se.spi.orbutil.fsm.Guard.Result;
+
+import edu.brown.catalog.CatalogUtil;
 import edu.brown.hstore.HStoreConstants;
+import edu.brown.hstore.conf.HStoreConf;
 
 public class TestHSQLBackend extends TestCase {
 
-    /*public void testMilestoneOneHSQL() throws InterruptedException, IOException, ProcCallException {
-        String ddl =
-            "CREATE TABLE WAREHOUSE (" +
-            "W_ID INTEGER DEFAULT '0' NOT NULL, "+
-            "W_NAME VARCHAR(16) DEFAULT NULL, " +
-            "PRIMARY KEY  (W_ID)" +
-            ");";
-        File ddlFile = VoltProjectBuilder.writeStringToTempFile(ddl);
-        String ddlPath = ddlFile.getPath();
-
-        String simpleProject =
-            "<?xml version=\"1.0\"?>\n" +
-            "<project>" +
-            "<database name='database'>" +
-            "<schemas><schema path='" + ddlPath + "' /></schemas>" +
-            "<procedures>" +
-            "<procedure class='org.voltdb.compiler.procedures.MilestoneOneInsert' />" +
-            "<procedure class='org.voltdb.compiler.procedures.MilestoneOneSelect' />" +
-            "<procedure class='org.voltdb.compiler.procedures.MilestoneOneCombined' />" +
-            "</procedures>" +
-            "</database>" +
-            "</project>";
-
-        System.out.println(simpleProject);
-
-        File projectFile = VoltProjectBuilder.writeStringToTempFile(simpleProject);
-        String projectPath = projectFile.getPath();
-
-        String testDir = BuildDirectoryUtils.getBuildDirectoryPath();
-        String catalogJar = testDir + File.separator + "milestoneOneHSQLDB.jar";
-
-        VoltCompiler compiler = new VoltCompiler();
-        ClusterConfig cluster_config = new ClusterConfig(1, 1, 0, "localhost");
-
-        boolean success = compiler.compile(projectPath, cluster_config,
-                                           catalogJar, System.out, null);
-
-        assertTrue(success);
-
-        // start VoltDB server using hsqlsb backend
-        ServerThread server = new ServerThread( catalogJar, BackendTarget.HSQLDB_BACKEND);
-        server.start();
-        server.waitForInitialization();
-
-        // run the test
-        Client client = ClientFactory.createClient();
-        client.createConnection("localhost", "program", "none");
-
-        // call the insert procedure
-        VoltTable[] results = client.callProcedure("MilestoneOneCombined", 99L, "TEST");
-        // check one table was returned
-        assertTrue(results.length == 1);
-        // check one tuple was modified
-        VoltTable result = results[0];
-        VoltTableRow row = result.fetchRow(0);
-        String resultStr = row.getString(0);
-        assertTrue(resultStr.equals("TEST"));
-
-        // stop execution
-        VoltDB.instance().shutdown(server);
+    /**
+    * JUnit test to assure functionality of constructor and shutdown
+    */
+    public void testSetUpShutDown(){
+        HsqlBackend test = new HsqlBackend(1);
+        test.shutdown();
     }
+    
 
-    public void testAdHocEmptyQuery() throws InterruptedException, IOException, ProcCallException {
-        TPCCProjectBuilder builder = new TPCCProjectBuilder();
-        builder.addDefaultSchema();
-        builder.addDefaultPartitioning();
-        builder.addProcedures(SelectAll.class);
-
-        String testDir = BuildDirectoryUtils.getBuildDirectoryPath();
-        String catalogJar = testDir + File.separator + "tpcchsql.jar";
-
-        builder.compile(catalogJar, 1, 1, 0, "localhost");
-
-        ServerThread server = new ServerThread(catalogJar, BackendTarget.HSQLDB_BACKEND);
-        server.start();
-        server.waitForInitialization();
-
-        // run the test
-        Client client = ClientFactory.createClient();
-        client.createConnection("localhost", "program", "none");
-
-        // call the insert procedure
-        VoltTable[] results = client.callProcedure("@AdHoc", "select * from WAREHOUSE");
-        // check one table was returned
-        assertTrue(results.length > 0);
-        assertTrue(results[0].getRowCount() == 0);
-
-        server.shutdown();
-        server.join();
-
-        // stop execution
-        VoltDB.instance().shutdown(server);
-    }*/
-
-    public void testDateInsertionAsLong() throws UnknownHostException, IOException, ProcCallException, InterruptedException {
-        TPCCProjectBuilder builder = new TPCCProjectBuilder();
-        builder.addDefaultSchema();
-        builder.addDefaultPartitioning();
-        System.out.println("\n\n\n STARTING STMT PROC ADD\n\n\n");
-        builder.addStmtProcedure("InsertHistory", "INSERT INTO HISTORY VALUES (?, ?, ?, ?, ?, ?, ?, ?);", "HISTORY.H_W_ID: 4");
-
-        String testDir = BuildDirectoryUtils.getBuildDirectoryPath();
-        String catalogJar = testDir + File.separator + "tpcchsql.jar";
-
-        builder.compile(catalogJar, 1, 1, 0, "localhost");
-
-        ServerThread server = new ServerThread(catalogJar, BackendTarget.HSQLDB_BACKEND);
-        server.start();
-        server.waitForInitialization();
-
-        // run the test
-        Client client = ClientFactory.createClient();
-        client.createConnection(null, "localhost", HStoreConstants.DEFAULT_PORT, "program", "none");
-
-        // call the insert procedure
-        VoltTable[] results = client.callProcedure("InsertHistory", 5, 5, 5, 5, 5, 100000L, 2.5, "nada").getResults();
-        // check one table was returned
-        assertTrue(results.length > 0);
-        assertTrue(results[0].getRowCount() == 1);
-
-        server.shutdown();
-        server.join();
-
-        // stop execution
-        VoltDB.instance().shutdown(server);
+    /**
+     * JUnit test to assure create table functions
+     */
+    public void testDDLCreateTable(){
+        HsqlBackend test = new HsqlBackend(1);
+        test.runDDL("CREATE TABLE test (col1 varchar(10), col2 varchar(10));");
+        test.shutdown();
     }
+   
+    /**
+     * JUnit test to assure that table can be created w/ varchar columns and DML 
+     * insert query is successfully executed.
+     */
+    public void testDMLInsertVarChars(){
+        HsqlBackend test = new HsqlBackend(1);
+        
+        test.runDDL("CREATE TABLE testDatabase (col1 varchar(10), col2 varchar(10));");
+        test.runDML("INSERT INTO testDatabase VALUES ('x1', 'x2');");
+        VoltTable result = test.runDML("SELECT * FROM testDatabase");
+        
+        assertTrue(result.getRowCount() == 1);
+        result.advanceRow();
+        assertTrue(result.get(0).equals("x1"));
+        assertTrue(result.get(1).equals("x2"));
+      
+        // assert that values greater than max varchar length cannot be inserted
+        boolean thrown = false;
+        try{
+        	test.runDML("INSERT INTO testDatabase VALUES ('this is too long', 'this is also too long');");
+        }
+        catch(ExpectedProcedureException v){
+        	thrown = true;
+        }
+        assertTrue(thrown);
+       
+        test.runDML("INSERT INTO testDatabase VALUES ('next val', 'fakeval');");
+        result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 2);
+        
+        result.advanceRow();
+        assertTrue(result.get(0).equals("x1"));
+        assertTrue(result.get(1).equals("x2"));
+        
+        result.advanceRow();
+        assertTrue(result.get(0).equals("next val"));
+        assertTrue(result.get(1).equals("fakeval"));  
+        
+        test.shutdown();
+    }
+    
+    /**
+     * JUnit test to create a table w/ INTEGER columns and test DML insertion and specifc row selection
+     */
+    public void testDMLInsertInteger(){
+        HsqlBackend test = new HsqlBackend(1);
+        
+        test.runDDL("CREATE TABLE testDatabase (col1 INTEGER, col2 INTEGER, CONSTRAINT pk PRIMARY KEY (col1));");
+        test.runDML("INSERT INTO testDatabase VALUES (1, 2);");
+        VoltTable result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 1);
+        
+        result.advanceRow();
+        assertTrue((int) result.get(0) == 1);
+        assertTrue((int) result.get(1) == 2);
+        
+        // assert that there is a key constraint violation
+        boolean thrown = false;
+        try {
+        	test.runDML("INSERT INTO testDatabase VALUES (1, 3);");
+        } catch (ConstraintFailureException ex){
+        	thrown = true;
+        }
+        assertTrue(thrown);
+        
+        test.runDML("INSERT INTO testDatabase VALUES (3, 4);");
+        result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 2);
+        
+        result.advanceToRow(0);
+        assertTrue((int) result.get(0) == 1);
+        assertTrue((int) result.get(1) == 2);
+        
+        result.advanceToRow(1);
+        assertTrue((int) result.get(0) == 3);
+        assertTrue((int) result.get(1) == 4);
+        
+        result = test.runDML("SELECT * FROM testDatabase WHERE col1 = 3");
+        assertTrue(result.getRowCount() == 1);
+        
+        result.advanceRow();
+        assertTrue((int) result.get(0) == 3);
+        assertTrue((int) result.get(1) == 4);
 
-    /*public void testAdHocDateInsertionAsLong() throws UnknownHostException, IOException, ProcCallException, InterruptedException {
-        TPCCProjectBuilder builder = new TPCCProjectBuilder();
-        builder.addDefaultSchema();
-        builder.addDefaultPartitioning();
-        builder.addProcedures(SelectAll.class);
+        test.shutdown();
+    }
+   
+    /**
+     * JUnit test to create a table w/ TINYINT columns and test DML insertion and deletionss
+     */
+    public void testDMLInsertTinyInteger(){
+        HsqlBackend test = new HsqlBackend(1);
+        byte first = 1;
+        byte second  = 2;
+        byte third = 0;
+        byte fourth = 4;
+        
+        test.runDDL("CREATE TABLE testDatabase (col1 TINYINT, col2 TINYINT);");
+        test.runDML("INSERT INTO testDatabase VALUES (1, 2);");
+        test.runDML("INSERT INTO testDatabase VALUES (0, 4);");
+        VoltTable result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 2);
 
-        String testDir = BuildDirectoryUtils.getBuildDirectoryPath();
-        String catalogJar = testDir + File.separator + "tpcchsql.jar";
+        result.advanceRow();
+        assertTrue((byte) result.get(0) == first);
+        assertTrue((byte) result.get(1) == second);
+        
+        result.advanceRow();
+        assertTrue((byte) result.get(0) == third);
+        assertTrue((byte) result.get(1) == fourth);
+        
+        test.runDML("DELETE FROM testDatabase WHERE col1 = 1");
+        result = test.runDML("SELECT * FROM testDatabase WHERE col1 = 0");
+        assertTrue(result.getRowCount() == 1);
+        
+        result.advanceRow();
+        assertTrue((byte) result.get(0) == third);
+        assertTrue((byte) result.get(1) == fourth);
+        
+        test.runDML("DELETE FROM testDatabase WHERE col2 = 4");
+        result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 0);
+        
+        test.shutdown();
+    }
+    
+    /**
+     * JUnit test to create a table w/ SMALLINT columns and test DML insertion and deletion
+     */
+    public void testDMLInsertSmallInteger(){
+        HsqlBackend test = new HsqlBackend(1);
+        byte first = 1;
+        byte second  = 2;
+        
+        test.runDDL("CREATE TABLE testDatabase (col1 TINYINT, col2 TINYINT);");
+        test.runDML("INSERT INTO testDatabase VALUES (1, 2);");
+        VoltTable result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 1);
 
-        builder.compile(catalogJar, 1, 1, 0, "localhost");
+        result.advanceRow();
+        assertTrue((byte) result.get(0) == first);
+        assertTrue((byte) result.get(1) == second);
+        
+        test.runDML("INSERT INTO testDatabase VALUES (1, 2);");
+        test.runDML("DELETE FROM testDatabase WHERE col1 = 1;");
+        result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 0);
+        
+        test.shutdown();
+    }
+   
+    /**
+     * JUnit test to create a table w/ BIGINT columns and test DML insertion
+     */
+    public void testDMLInsertBigInteger(){
+        HsqlBackend test = new HsqlBackend(1);
+        long first = 100000000000L;
+        long second  = 200000000000L;
+        
+        test.runDDL("CREATE TABLE testDatabase (col1 BIGINT, col2 BIGINT);");
+        test.runDML("INSERT INTO testDatabase VALUES (100000000000, 200000000000);");
+        VoltTable result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 1);
 
-        ServerThread server = new ServerThread(catalogJar, BackendTarget.HSQLDB_BACKEND);
-        server.start();
-        server.waitForInitialization();
+        result.advanceRow();
+        assertTrue((long) result.get(0) == first);
+        assertTrue((long) result.get(1) == second);
 
-        // run the test
-        Client client = ClientFactory.createClient();
-        client.createConnection("localhost", "program", "none");
+        test.runDML("INSERT INTO testDatabase VALUES (300000000000, 400000000000);");
+        test.runDML("DELETE FROM testDatabase");
+        result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 0);
+        
+        test.shutdown();
+    }
+    
+    /**
+     * JUnit test to create a table w/ BIGINT columns and test DML insertion
+     */
+    public void testDMLInsertDecimal(){
+        HsqlBackend test = new HsqlBackend(1);
+        BigDecimal first = new BigDecimal(1.1).setScale(12, BigDecimal.ROUND_DOWN);
+        BigDecimal second = new BigDecimal(2.2).setScale(12, BigDecimal.ROUND_DOWN);
+        
+        test.runDDL("CREATE TABLE testDatabase (col1 DECIMAL, col2 DECIMAL);");
+        test.runDML("INSERT INTO testDatabase VALUES (1.1, 2.2);");
+        VoltTable result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 1);
 
-        // call the insert procedure
-        VoltTable[] results = client.callProcedure("@AdHoc", "INSERT INTO HISTORY VALUES (5, 5, 5, 5, 5, 100000, 2.5, 'nada');");
-        // check one table was returned
-        assertTrue(results.length > 0);
-        assertTrue(results[0].getRowCount() == 1);
+        result.advanceRow();
+        assertTrue(first.compareTo((BigDecimal) result.get(0)) == 0);
+        assertTrue(second.compareTo((BigDecimal) result.get(1)) == 0);
 
-        server.shutdown();
-        server.join();
-        client.shutdown();
+        test.shutdown();
+    }
+    
+    /**
+     * JUnit test to create a table w/ FLOAT columns and test DML insertion
+     */
+    public void testDMLInsertFloatAsDouble(){
+        HsqlBackend test = new HsqlBackend(1);
+        double first = 1.1;
+        double second = 2.2;
+        
+        test.runDDL("CREATE TABLE testDatabase (col1 FLOAT, col2 FLOAT);");
+        test.runDML("INSERT INTO testDatabase VALUES (1.1, 2.2);");
+        VoltTable result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 1);
 
-        // stop execution
-        VoltDB.instance().shutdown(server);
-    }*/
+        result.advanceRow();
+        assertTrue(result.getDouble(0) == first);
+        assertTrue(result.getDouble(1) == second);
+        test.shutdown();
+    }
+    
+    /**
+     * JUnit test to create a table w/ FLOAT columns and test DML insertion
+     */
+    public void testDMLInsertFloatAsFloat(){
+        HsqlBackend test = new HsqlBackend(1);
+        float first = 1.1f;
+        float second = 2.2f;
+   
+        test.runDDL("CREATE TABLE testDatabase (col1 FLOAT, col2 FLOAT);");
+        test.runDML("INSERT INTO testDatabase VALUES (1.1, 2.2);");
+        VoltTable result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 1);
+
+        result.advanceRow();
+        Double val = result.getDouble(0);
+        Double val2 = result.getDouble(1);
+        assertTrue(val.floatValue()  == first);
+        assertTrue(val2.floatValue() == second);
+        test.shutdown();
+    }
+    
+    /**
+     * JUnit test to create a table w/ String and Integer columns and test DML insertion with params
+     */
+    public void testDMLParamsInsertStringAndInteger(){
+        HsqlBackend test = new HsqlBackend(1);
+        test.runDDL("CREATE TABLE testDatabase (col1 varchar(10), col2 INTEGER );");
+        test.runSQLWithSubString("INSERT INTO testDatabase VALUES (?, ?);", "x1", 4);
+        
+        boolean thrown = false;
+        try {
+			test.runSQLWithSubString("INSERT INTO testDatabase VALUES (?, ?);", 5, "x1");
+		} catch (ExpectedProcedureException e2) {
+		    thrown = true;
+		}
+        assertTrue(thrown);
+        
+        VoltTable result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 1);
+        
+        result.advanceRow();
+        assertTrue(result.get(0).equals("x1"));
+        assertTrue((int)result.get(1)==4);
+        
+        
+        test.runSQLWithSubString("INSERT INTO testDatabase VALUES (?, ?);", "x1", 4, 5);
+        assertTrue(thrown);
+        
+        thrown = false;
+        test.runSQLWithSubString("INSERT INTO testDatabase VALUES (?, ?);", "x1");
+        assertTrue(thrown);
+        
+        test.shutdown();
+    }
+    
+    /**
+     * JUnit test to create a table w/ TIMESTAMP columns and test DML insertion with params
+     */
+    public void testDMLParamsTimestamp() throws IOException{
+        HsqlBackend test = new HsqlBackend(1);
+        Long timestamp1 = Calendar.getInstance().getTimeInMillis();
+        Long timestamp2 = Calendar.getInstance().getTimeInMillis();
+       
+        test.runDDL("CREATE TABLE testDatabase (col1 TIMESTAMP, col2 TIMESTAMP);");
+        test.runSQLWithSubString("INSERT INTO testDatabase VALUES (?, ?);", timestamp1, timestamp2);
+        VoltTable result = test.runDML("SELECT * FROM testDatabase");
+        assertTrue(result.getRowCount() == 1);
+        result.advanceRow();
+        assertTrue(result.getTimestampAsLong(0) == (timestamp1*1000));
+        assertTrue(result.getTimestampAsLong(1) == timestamp2*1000);
+        test.shutdown();
+    }
+   
+   /**
+    * TODO: Test insert w/ params for tinyint
+    */
+   
+   /**
+    * TODO: Test insert w/ params for smallint
+    */
+   
+   /**
+    * TODO: Test insert w/ params for bigint
+    */
+   
+   /**
+    * TODO: Test insert w/ params for decimal
+    */  
+   
+   /**
+    * TODO: Test insert w/ params for float
+    */
+   
+   /**
+    * TODO: Test deletion w/ params for tinyint
+    */
+   
+   /**
+    * TODO: Test deletion w/ params for smallint
+    */
+   
+   /**
+    * TODO: Test deletion w/ params for bigint
+    */
+   
+   /**
+    * TODO: Test deletion w/ params for decimal
+    */  
+   
+   /**
+    * TODO: Test deletion w/ params for float
+    */
+   /**
+    * TODO: Test update w/ params for tinyint
+    */
+   
+   /**
+    * TODO: Test update w/ params for smallint
+    */
+   
+   /**
+    * TODO: Test update w/ params for bigint
+    */
+   
+   /**
+    * TODO: Test update w/ params for decimal
+    */  
+   
+   /**
+    * TODO: Test update w/ params for float
+    */
+
 }

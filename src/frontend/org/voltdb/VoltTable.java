@@ -1227,4 +1227,20 @@ public class VoltTable extends VoltTableRow implements FastSerializable {
     public void setStatusCode(byte code) {
         m_buffer.put( 4, code);
     }
+
+    //lyzhang
+    /**
+     * Get the schema of the table. Can be fed into another table's constructor.
+     *
+     * @return An ordered array of {@link ColumnInfo} instances for each table column.
+     */
+    public ColumnInfo[] getTableSchema()
+    {
+        ColumnInfo[] schema = new ColumnInfo[m_colCount];
+        for (int i = 0; i < m_colCount; i++) {
+            ColumnInfo col = new ColumnInfo(getColumnName(i), getColumnType(i));
+            schema[i] = col;
+        }
+        return schema;
+    }
 }

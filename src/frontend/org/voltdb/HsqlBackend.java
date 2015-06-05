@@ -20,6 +20,7 @@ package org.voltdb;
 import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -203,6 +204,75 @@ public class HsqlBackend {
                 throw new ExpectedProcedureException("HSQLDB Backend DML Error ", e);
             }
         }
+    }
+
+    VoltTable runSQLWithSubString(String stmt, Object... args){
+        StringBuilder sqlOut =  new StringBuilder(stmt.length() * 2);
+       
+        String[] words = stmt.split(" ");
+        
+        int totalQuestionMarks = 0;
+        for(int i = 0; i < words.length; i++){
+            if(words[i].contains("?")){
+                totalQuestionMarks++;
+            }
+        }
+        //System.out.println(totalQuestionMarks);
+        //System.out.println(args.length);
+        /**
+         * TODO: Find a better way of handling errors exit or something
+         */
+        if(totalQuestionMarks > args.length){
+            System.out.println("Error not all params provided");
+        } else if (totalQuestionMarks < args.length){
+            System.out.println("Error: too many params provided");
+        }
+        
+        int argsTracker = 0;
+        for(int i = 0; i < words.length; i++){
+            if (words[i].contains("?")){
+                if(words[i].equals("?")){
+                   // String insert = getInsertVal(args[argsTracker]);
+                    sqlOut.append(getInsertVal(args[argsTracker]) + " ");
+                    argsTracker++;
+                } else if (words[i].length() > 1) {
+                    for(int j = 0; j < words[i].length(); j++){
+                        if(words[i].charAt(j) == '?'){
+                            //String insert = getInsertVal(args[argsTracker]);
+                            sqlOut.append(getInsertVal(args[argsTracker]));
+                            argsTracker++;
+                        } else {
+                            sqlOut.append(words[i].charAt(j));
+                        }      
+                    }
+                    sqlOut.append(" ");
+                }
+            } else {
+                sqlOut.append(words[i] + " ");
+            }
+           
+        }
+       // sqlOut.append(";");
+        //System.out.println(sqlOut);
+        //System.out.println(sqlOut.toString());
+       VoltTable result = runDML(sqlOut.toString());
+       
+       return result;
+        
+    }
+    
+    private Object getInsertVal(Object arg){
+        /**
+         * TODO: finish testing to make sure it works
+         */
+        String temp = "";
+        if(arg instanceof String){
+            temp = "'" + arg + "'";
+            return temp;
+        } else {
+            return arg;
+        }
+        
     }
 
     VoltTable runSQLWithSubstitutions(final SQLStmt stmt, Object... args) {

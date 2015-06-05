@@ -27,6 +27,10 @@ import edu.brown.pools.Poolable;
  *  Interface implemented by the responses that are generated for procedure invocations
  */
 public interface ClientResponse extends Poolable {
+    /**
+     * Status code indicating the store procedure executed successfully
+     */
+    public static final byte SUCCESS = 1;
 
     /**
      * Client Handle
