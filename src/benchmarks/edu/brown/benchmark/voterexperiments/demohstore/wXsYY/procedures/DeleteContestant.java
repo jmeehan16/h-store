@@ -31,7 +31,6 @@ package edu.brown.benchmark.voterexperiments.demohstore.wXsYY.procedures;
 
 import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
-import org.voltdb.StmtInfo;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.types.TimestampType;

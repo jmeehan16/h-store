@@ -31,13 +31,11 @@ package edu.brown.benchmark.voterexperiments.demohstore.paramproc.procedures;
 
 import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
-import org.voltdb.StmtInfo;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.types.TimestampType;
 
 import edu.brown.benchmark.voterexperiments.demohstore.wXsYY.VoterDemoHStoreConstants;
-import edu.brown.benchmark.voterexperiments.demosstore.wXsYY.VoterDemoSStoreConstants;
 
 @ProcInfo (
 	//partitionInfo = "contestants.contestant_number:1",
@@ -67,6 +65,6 @@ public class DeleteContestant extends VoltProcedure {
         voltExecuteSQL(true);
 		
         // Set the return value to 0: successful vote
-        return VoterDemoSStoreConstants.DELETE_SUCCESSFUL;
+        return VoterDemoHStoreConstants.DELETE_SUCCESSFUL;
     }
 }

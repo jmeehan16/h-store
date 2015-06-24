@@ -130,14 +130,17 @@ public class VoterDemoHStoreClient extends BenchmarkComponent {
 		        	//response = client.callProcedure("GenerateLeaderboard", call.voteId);
 		    		//incrementTransactionCounter(response, 1);
 		        }
+		        else {
+		        	return true;
+		        }
 		        
 		        results = response.getResults();
-/**		        
+		        
 		        if(results.length > 0 && results[0].asScalarLong() == VoterDemoHStoreConstants.DELETE_CONTESTANT)
 		        {
 		        	response = client.callProcedure("DeleteContestant");
 		        }
-*/		        
+		        
 		        return true;
 
     	} 

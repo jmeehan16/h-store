@@ -31,7 +31,6 @@ package edu.brown.benchmark.voterexperiments.demohstore.stageflag.procedures;
 
 import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
-import org.voltdb.StmtInfo;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.types.TimestampType;
@@ -44,10 +43,6 @@ import edu.brown.benchmark.voterexperiments.demohstore.wXsYY.VoterDemoHStoreCons
     singlePartition = true
 )
 public class Vote extends VoltProcedure {
-	
-	@StmtInfo(
-            upsertable=true
-        )
 	
     // Checks if the vote is for a valid contestant
     public final SQLStmt checkContestantStmt = new SQLStmt(

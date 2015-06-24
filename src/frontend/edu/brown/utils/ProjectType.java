@@ -89,6 +89,12 @@ public enum ProjectType {
     MICROEXPNOROUTETRIGTRIG8("MicroExpNoRouteTrigTrig8", "edu.brown.benchmark.microexperiments.noroutetrig.trig8"),
     MICROEXPNOROUTETRIGTRIG9("MicroExpNoRouteTrigTrig9", "edu.brown.benchmark.microexperiments.noroutetrig.trig9"),
     MICROEXPNOROUTETRIGTRIG10("MicroExpNoRouteTrigTrig10", "edu.brown.benchmark.microexperiments.noroutetrig.trig10"),
+
+    VOTERDEMOHSTOREWXSYY("VoterDemoHStoreWXSYY", "edu.brown.benchmark.voterexperiments.demohstore.wXsYY"),
+    VOTERDEMOHSTOREFILE("VoterDemoHStoreFile", "edu.brown.benchmark.voterexperiments.demohstore.file"),
+    VOTERDEMOHSTORESTAGEFLAG("VoterDemoHStoreStageFlag", "edu.brown.benchmark.voterexperiments.demohstore.stageflag"),
+    //VOTERDEMOHSTOREASYNCH("VoterDemoHStoreAsynch", "edu.brown.benchmark.voterexperiments.demohstore.asynch"),
+    //VOTERDEMOHSTOREPARAMPROC("VoterDemoHStoreParamProc", "edu.brown.benchmark.voterexperiments.demohstore.paramproc"),
     ;
 
 
