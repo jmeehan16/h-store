@@ -93,7 +93,7 @@ public enum ProjectType {
     VOTERDEMOHSTOREWXSYY("VoterDemoHStoreWXSYY", "edu.brown.benchmark.voterexperiments.demohstore.wXsYY"),
     VOTERDEMOHSTOREFILE("VoterDemoHStoreFile", "edu.brown.benchmark.voterexperiments.demohstore.file"),
     VOTERDEMOHSTORESTAGEFLAG("VoterDemoHStoreStageFlag", "edu.brown.benchmark.voterexperiments.demohstore.stageflag"),
-    //VOTERDEMOHSTOREASYNCH("VoterDemoHStoreAsynch", "edu.brown.benchmark.voterexperiments.demohstore.asynch"),
+    VOTERDEMOHSTOREASYNCHFILE("VoterDemoHStoreAsynchFile", "edu.brown.benchmark.voterexperiments.demohstore.asynchfile"),
     //VOTERDEMOHSTOREPARAMPROC("VoterDemoHStoreParamProc", "edu.brown.benchmark.voterexperiments.demohstore.paramproc"),
     ;
 

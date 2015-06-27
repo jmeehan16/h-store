@@ -27,7 +27,7 @@
 // number of allowed votes.
 //
 
-package edu.brown.benchmark.voterexperiments.demohstore.file.procedures;
+package edu.brown.benchmark.voterexperiments.demohstore.asynchfile.procedures;
 
 import org.voltdb.ProcInfo;
 import org.voltdb.SQLStmt;
@@ -35,7 +35,7 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.types.TimestampType;
 
-import edu.brown.benchmark.voterexperiments.demohstore.file.VoterDemoHStoreConstants;
+import edu.brown.benchmark.voterexperiments.demohstore.asynchfile.VoterDemoHStoreConstants;
 
 @ProcInfo (
 	//partitionInfo = "contestants.contestant_number:1",
@@ -43,7 +43,15 @@ import edu.brown.benchmark.voterexperiments.demohstore.file.VoterDemoHStoreConst
 )
 public class GenerateLeaderboard extends VoltProcedure {
 	
-    // Put the vote into the staging window
+	public final SQLStmt getVoteStmt = new SQLStmt(
+		"SELECT vote_id, phone_number, state, contestant_number, created FROM proc_one_out WHERE vote_id = ?;"
+	);
+	
+	public final SQLStmt deleteProcOneOutStmt = new SQLStmt(
+		"DELETE FROM proc_one_out WHERE vote_id = ?;"
+	);
+	
+	// Put the vote into the staging window
     public final SQLStmt insertVoteStagingStmt = new SQLStmt(
 		"INSERT INTO w_rows (vote_id, phone_number, state, contestant_number, created, win_id, stage_flag) VALUES (?, ?, ?, ?, ?, ?, 1);"
     );
@@ -105,19 +113,35 @@ public class GenerateLeaderboard extends VoltProcedure {
     public final SQLStmt getLowestContestant = new SQLStmt(
     	"SELECT contestant_number FROM v_votes_by_contestant ORDER BY num_votes ASC, contestant_number DESC LIMIT 1;"
     );
+    
+    public final SQLStmt insertProcTwoOutStmt = new SQLStmt(
+		"INSERT INTO proc_two_out VALUES (?,?);"
+    );
 	
-    public VoltTable[] run(long voteId, long phoneNumber, String state, long contestantNumber, TimestampType timestamp) {
+    public long run(long voteId) {
 		
-        voltQueueSQL(checkStagingCount);
+    	voltQueueSQL(checkStagingCount);
         voltQueueSQL(checkCurrentVoteStmt);
+        voltQueueSQL(getVoteStmt, voteId);
         voltQueueSQL(checkNumVotesStmt);
+        voltQueueSQL(deleteProcOneOutStmt, voteId);
         //voltQueueSQL(checkNumContestants);
         VoltTable validation[] = voltExecuteSQL();
 	
         int stagingCount = (int)(validation[0].fetchRow(0).getLong(0)) + 1;
         long currentWinId = validation[1].fetchRow(0).getLong(0) + 1;
-        int numVotes = (int)(validation[2].fetchRow(0).getLong(0)) + 1;
+        int numVotes = (int)(validation[3].fetchRow(0).getLong(0)) + 1;
         //int numContestants = (int)(validation[4].fetchRow(0).getLong(0)) + 1; 
+        
+        if(validation[2].getRowCount() < 1)
+        {
+        	return VoterDemoHStoreConstants.ERR_NO_VOTE_FOUND;
+        }
+        
+        long phoneNumber = validation[2].fetchRow(0).getLong(1);
+        String state = validation[2].fetchRow(0).getString(2);
+        int contestantNumber = (int)(validation[2].fetchRow(0).getLong(3));
+        TimestampType timestamp = validation[2].fetchRow(0).getTimestampAsTimestamp(4);
         
         if(currentWinId <= VoterDemoHStoreConstants.WINDOW_SIZE)
         {
@@ -155,13 +179,17 @@ public class GenerateLeaderboard extends VoltProcedure {
         	voltQueueSQL(getLowestContestant);
         	validation = voltExecuteSQL();
         	if(validation[0].getRowCount() == 0)
-        		return null;
-        	else
-        		return validation;
+        		return VoterDemoHStoreConstants.ERR_NOT_ENOUGH_CONTESTANTS;
+        	else {
+        		int lowestContestant = (int)validation[0].fetchRow(0).getLong(0);
+	        	voltQueueSQL(insertProcTwoOutStmt, voteId, lowestContestant);
+	        	voltExecuteSQL(true);
+	        	return voteId;
+        	}
         }
         else
         {
-        	return null;
+        	return VoterDemoHStoreConstants.WINDOW_SUCCESSFUL;
         }
     }
 }

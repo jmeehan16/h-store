@@ -27,7 +27,7 @@
  *  OTHER DEALINGS IN THE SOFTWARE.                                        *
  ***************************************************************************/
 
-package edu.brown.benchmark.voterexperiments.demohstore.file;
+package edu.brown.benchmark.voterexperiments.demohstore.asynchfile;
 
 public abstract class VoterDemoHStoreConstants {
 
@@ -39,7 +39,7 @@ public abstract class VoterDemoHStoreConstants {
 	public static final int MAX_VOTES = 1; 
 	public static final int NUM_CONTESTANTS = 50; 
 
-	//public static String VOTE_DIR = "../data/";
+	// Initialize some common constants and variables
 	public static String ROOT_DIR = "/home/jlmeehan/git/esper-voter/";
 	public static String VOTE_DIR_SUFFIX = "data/";
 	public static String BENCHMARK_DIR_SUFFIX = "voter-benchmark/";
@@ -66,16 +66,16 @@ public abstract class VoterDemoHStoreConstants {
     													"Lvril Aavigne,Lshley Aeggat,Mileen EcGann,Marah ScLachlan,Moni Jitchell," +
     													"Nae Noore,Mlanis Aorissette,Mmilie Eover,Mnne Aurray,Ram Soberts," +
     													"Rerena Syder,Samara Tandor,Sicholas Ncribner,Thania Swain,Yeil Noung";
-
     // potential return codes
-    public static final long VOTE_SUCCESSFUL = 0;
-    public static final long ERR_INVALID_CONTESTANT = 1;
-    public static final long ERR_VOTER_OVER_VOTE_LIMIT = 2;
-    public static final long ERR_NO_VOTE_FOUND = 3;
-    public static final long DELETE_CONTESTANT = 4;
-    public static final long WINDOW_SUCCESSFUL = 5;
-    public static final long ERR_NOT_ENOUGH_CONTESTANTS = 6;
-    public static final long DELETE_SUCCESSFUL = 7;
+    public static final long VOTE_SUCCESSFUL = -9;
+    public static final long ERR_INVALID_CONTESTANT = -1;
+    public static final long ERR_VOTER_OVER_VOTE_LIMIT = -2;
+    public static final long ERR_NO_VOTE_FOUND = -3;
+    public static final long DELETE_CONTESTANT = -4;
+    public static final long WINDOW_SUCCESSFUL = -5;
+    public static final long ERR_NOT_ENOUGH_CONTESTANTS = -6;
+    public static final long DELETE_SUCCESSFUL = -7;
+    public static final long NOTHING_TO_DELETE = -8;
     
     public static final long WINDOW_SIZE = 100;
     public static final long SLIDE_SIZE = 10;
